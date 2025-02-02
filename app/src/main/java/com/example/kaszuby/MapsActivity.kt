@@ -2,8 +2,8 @@ package com.example.kaszuby
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -20,6 +20,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var mMap: GoogleMap
     private lateinit var mAuth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
+    private lateinit var loginButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,16 +30,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mAuth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
 
-        // Sprawdzenie, czy użytkownik jest zalogowany
-        if (mAuth.currentUser == null) {
-            // Przekierowanie do ekranu logowania
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-        }
-
         // Inicjalizacja mapy
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
         mapFragment?.getMapAsync(this)
+
+        // Przyciski logowania (umieszczamy go w rogu mapy)
+        loginButton = findViewById(R.id.login_button)
+        loginButton.setOnClickListener {
+            // Uruchamia ekran logowania, jeśli użytkownik chce się zalogować
+            startActivity(Intent(this, LoginActivity::class.java))
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -55,6 +56,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 if (task.isSuccessful) {
                     val documentSnapshots = task.result
                     for (document in documentSnapshots!!) {
+                        // Poprawne wykorzystanie QueryDocumentSnapshot
                         val latitude = document.getDouble("latitude")
                         val longitude = document.getDouble("longitude")
                         val description = document.getString("description")
@@ -64,6 +66,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                             mMap.addMarker(MarkerOptions().position(point).title(description))
                         }
                     }
+                } else {
+                    Toast.makeText(this, "Błąd ładowania punktów.", Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -85,24 +89,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 Toast.makeText(this, "Musisz być zalogowany, aby dodać punkty", Toast.LENGTH_SHORT).show()
             }
         }
-
-        // Obsługa kliknięcia na markerze (możliwość usunięcia punktu)
-        mMap.setOnMarkerClickListener { marker ->
-            if (mAuth.currentUser != null) {
-                // Pokazanie dialogu potwierdzenia usunięcia punktu
-                AlertDialog.Builder(this)
-                    .setTitle("Usuń punkt")
-                    .setMessage("Czy na pewno chcesz usunąć ten punkt?")
-                    .setPositiveButton("Tak") { _, _ ->
-                        // Usunięcie punktu z Firestore
-                        db.collection("points").document(marker.id).delete()
-                    }
-                    .setNegativeButton("Nie", null)
-                    .show()
-            }
-            true
-        }
     }
 }
+
 
 
